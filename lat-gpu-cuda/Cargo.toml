@@ -1,0 +1,8 @@
+[package]
+name = "lat-gpu-cuda"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cudarc = "0.11"
+lat-core = { path = "../lat-core" }

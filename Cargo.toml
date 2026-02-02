@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "lat-core",
+    "lat-gpu-cuda",
+    "lat-gpu-vulkan",
+    "lat-gui",
+    "lat-formats/zip",
+    "lat-formats/7z",
+    "lat-formats/paqg",
+    "lat-formats/lat",
+]
+resolver = "2"

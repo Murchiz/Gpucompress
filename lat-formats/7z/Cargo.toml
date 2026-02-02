@@ -1,0 +1,8 @@
+[package]
+name = "lat-7z"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sevenz-rust = "0.5"
+lat-core = { path = "../../lat-core" }

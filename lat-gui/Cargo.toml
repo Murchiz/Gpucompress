@@ -1,0 +1,15 @@
+[package]
+name = "lat-gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+slint = "1.4"
+lat-core = { path = "../lat-core" }
+lat-zip = { path = "../lat-formats/zip" }
+lat-7z = { path = "../lat-formats/7z" }
+lat-paqg = { path = "../lat-formats/paqg" }
+lat-format = { path = "../lat-formats/lat" }
+
+[build-dependencies]
+slint-build = "1.4"

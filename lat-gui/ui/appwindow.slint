@@ -1,0 +1,40 @@
+import { Button, VerticalBox, HorizontalBox, ListView, StandardButton } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "Lat Compressor";
+    min-width: 600px;
+    min-height: 400px;
+
+    callback compress_clicked();
+    callback decompress_clicked();
+
+    VerticalBox {
+        HorizontalBox {
+            alignment: start;
+            Button { text: "Add"; clicked => { /* ... */ } }
+            Button { text: "Extract To"; clicked => { decompress_clicked() } }
+            Button { text: "Test"; }
+            Button { text: "Delete"; }
+            Button { text: "Information"; }
+            Button { text: "Compress"; primary: true; clicked => { compress_clicked() } }
+        }
+
+        ListView {
+            // Placeholder for file list
+            for data in [
+                { name: "Documents", size: "DIR", date: "2023-10-27" },
+                { name: "photo.jpg", size: "1.2 MB", date: "2023-10-25" },
+                { name: "project.zip", size: "4.5 MB", date: "2023-10-24" },
+            ] : HorizontalBox {
+                Text { text: data.name; width: 200px; }
+                Text { text: data.size; width: 100px; }
+                Text { text: data.date; }
+            }
+        }
+
+        HorizontalBox {
+            alignment: end;
+            Text { text: "GPU Acceleration: CUDA (Active)"; color: green; }
+        }
+    }
+}
