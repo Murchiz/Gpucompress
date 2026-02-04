@@ -28,7 +28,7 @@ pub struct CompressionOptions {
 
 pub mod crypto {
     use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit};
-    use aes_gcm::aead::Aead;
+    use aes_gcm::aead::{Aead, AeadInPlace};
     use pbkdf2::pbkdf2_hmac;
     use sha2::Sha256;
     use rand::Rng;
@@ -44,13 +44,19 @@ pub mod crypto {
         let mut nonce = [0u8; 12];
         rand::thread_rng().fill(&mut nonce);
 
-        let ciphertext = cipher.encrypt(Nonce::from_slice(&nonce), data)
-            .map_err(|e| e.to_string())?;
-
-        let mut result = Vec::with_capacity(16 + 12 + ciphertext.len());
+        // Pre-allocate the entire result buffer: salt (16) + nonce (12) + data + tag (16)
+        // This avoids redundant allocations and copies compared to cipher.encrypt()
+        let mut result = Vec::with_capacity(16 + 12 + data.len() + 16);
         result.extend_from_slice(&salt);
         result.extend_from_slice(&nonce);
-        result.extend_from_slice(&ciphertext);
+        result.extend_from_slice(data);
+
+        // Encrypt in place starting from after salt and nonce
+        let tag = cipher.encrypt_in_place_detached(Nonce::from_slice(&nonce), b"", &mut result[28..])
+            .map_err(|e| e.to_string())?;
+
+        // Append the authentication tag
+        result.extend_from_slice(tag.as_slice());
         Ok(result)
     }
 
