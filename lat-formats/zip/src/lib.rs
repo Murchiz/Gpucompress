@@ -7,9 +7,18 @@ pub struct ZipCompressor;
 
 impl Compressor for ZipCompressor {
     fn compress(&self, entries: &[ArchiveEntry], _password: Option<&str>) -> Result<Vec<u8>, String> {
-        // Pre-allocate buffer based on uncompressed size to reduce reallocations
-        let total_size: usize = entries.iter().map(|e| e.data.len()).sum();
-        let mut buf = Vec::with_capacity(total_size);
+        // Bolt ⚡ Optimization: Pre-allocate buffer with an accurate estimate of both
+        // uncompressed data AND ZIP metadata overhead (headers, central directory).
+        // This prevents multiple expensive reallocations for archives with many small files.
+        let mut total_uncompressed_size = 0;
+        let mut total_overhead = 22; // End of Central Directory Record
+        for entry in entries {
+            total_uncompressed_size += entry.data.len();
+            // Overhead per file: 30 (Local File Header) + 46 (Central Directory Header) + 2 * name.len()
+            total_overhead += 76 + 2 * entry.name.len();
+        }
+
+        let mut buf = Vec::with_capacity(total_uncompressed_size + total_overhead);
         {
             let mut writer = ZipWriter::new(Cursor::new(&mut buf));
             let options = FileOptions::default()
@@ -43,5 +52,35 @@ impl Compressor for ZipCompressor {
             });
         }
         Ok(entries)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lat_core::ArchiveEntry;
+
+    #[test]
+    fn test_zip_compress_decompress() {
+        let compressor = ZipCompressor;
+        let entries = vec![
+            ArchiveEntry {
+                name: "test1.txt".to_string(),
+                data: b"Hello world".to_vec(),
+            },
+            ArchiveEntry {
+                name: "folder/test2.txt".to_string(),
+                data: b"More data".to_vec(),
+            },
+        ];
+
+        let compressed = compressor.compress(&entries, None).expect("Compression failed");
+        let decompressed = compressor.decompress(&compressed, None).expect("Decompression failed");
+
+        assert_eq!(entries.len(), decompressed.len());
+        assert_eq!(entries[0].name, decompressed[0].name);
+        assert_eq!(entries[0].data, decompressed[0].data);
+        assert_eq!(entries[1].name, decompressed[1].name);
+        assert_eq!(entries[1].data, decompressed[1].data);
     }
 }
