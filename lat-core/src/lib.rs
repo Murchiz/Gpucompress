@@ -27,22 +27,23 @@ pub struct CompressionOptions {
 }
 
 pub mod crypto {
-    use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit};
-    use aes_gcm::aead::{Aead, AeadInPlace};
+    use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit, Tag};
+    use aes_gcm::aead::AeadInPlace;
     use pbkdf2::pbkdf2_hmac;
     use sha2::Sha256;
     use rand::Rng;
 
     pub fn encrypt(data: &[u8], password: &str) -> Result<Vec<u8>, String> {
+        let mut rng = rand::thread_rng();
         let mut salt = [0u8; 16];
-        rand::thread_rng().fill(&mut salt);
+        rng.fill(&mut salt);
 
         let mut key = [0u8; 32];
         pbkdf2_hmac::<Sha256>(password.as_bytes(), &salt, 100_000, &mut key);
 
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
         let mut nonce = [0u8; 12];
-        rand::thread_rng().fill(&mut nonce);
+        rng.fill(&mut nonce);
 
         // Optimization: Pre-allocate result buffer and encrypt in-place to avoid
         // redundant allocations and copies.
@@ -62,8 +63,10 @@ pub mod crypto {
     }
 
     pub fn decrypt(data: &[u8], password: &str) -> Result<Vec<u8>, String> {
-        if data.len() < 16 + 12 {
-            return Err("Invalid encrypted data".to_string());
+        // Optimization: Fail fast if data is too short to contain salt, nonce, and tag.
+        // 16 (salt) + 12 (nonce) + 16 (tag) = 44 bytes
+        if data.len() < 44 {
+            return Err("Invalid encrypted data: too short".to_string());
         }
 
         let salt = &data[0..16];
@@ -74,8 +77,18 @@ pub mod crypto {
         pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, 100_000, &mut key);
 
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
-        cipher.decrypt(Nonce::from_slice(nonce), ciphertext)
-            .map_err(|e| e.to_string())
+
+        // Optimization: Avoid redundant allocations and copying by decrypting in-place.
+        // cipher.decrypt() would allocate a new Vec and copy the ciphertext+tag into it.
+        // Format: [ciphertext][16-byte tag]
+        let tag_pos = ciphertext.len() - 16;
+        let mut buffer = ciphertext[..tag_pos].to_vec();
+        let tag = Tag::from_slice(&ciphertext[tag_pos..]);
+
+        cipher.decrypt_in_place_detached(Nonce::from_slice(nonce), b"", &mut buffer, tag)
+            .map_err(|e| e.to_string())?;
+
+        Ok(buffer)
     }
 }
 
