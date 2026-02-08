@@ -27,7 +27,7 @@ pub struct CompressionOptions {
 }
 
 pub mod crypto {
-    use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit, Tag};
+    use aes_gcm::{Aes256Gcm, Nonce, KeyInit, Tag};
     use aes_gcm::aead::AeadInPlace;
     use pbkdf2::pbkdf2_hmac;
     use sha2::Sha256;
@@ -35,26 +35,27 @@ pub mod crypto {
 
     pub fn encrypt(data: &[u8], password: &str) -> Result<Vec<u8>, String> {
         let mut rng = rand::thread_rng();
-        let mut salt = [0u8; 16];
-        rng.fill(&mut salt);
+
+        // Bolt ⚡ Optimization: Combined RNG call for salt and nonce to reduce overhead.
+        let mut salt_nonce = [0u8; 28];
+        rng.fill(&mut salt_nonce);
+        let (salt, nonce) = salt_nonce.split_at(16);
 
         let mut key = [0u8; 32];
-        pbkdf2_hmac::<Sha256>(password.as_bytes(), &salt, 100_000, &mut key);
+        pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, 100_000, &mut key);
 
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
-        let mut nonce = [0u8; 12];
-        rng.fill(&mut nonce);
+        // Bolt ⚡ Optimization: Use new_from_slice to avoid redundant GenericArray copies.
+        let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
 
         // Optimization: Pre-allocate result buffer and encrypt in-place to avoid
         // redundant allocations and copies.
         // Format: [16-byte salt][12-byte nonce][ciphertext][16-byte tag]
-        let mut result = Vec::with_capacity(16 + 12 + data.len() + 16);
-        result.extend_from_slice(&salt);
-        result.extend_from_slice(&nonce);
+        let mut result = Vec::with_capacity(28 + data.len() + 16);
+        result.extend_from_slice(&salt_nonce);
         result.extend_from_slice(data);
 
         // Encrypt the data part in-place (starts at index 28)
-        let tag = cipher.encrypt_in_place_detached(Nonce::from_slice(&nonce), b"", &mut result[28..])
+        let tag = cipher.encrypt_in_place_detached(Nonce::from_slice(nonce), b"", &mut result[28..])
             .map_err(|e| e.to_string())?;
 
         // Append the authentication tag
@@ -69,21 +70,22 @@ pub mod crypto {
             return Err("Invalid encrypted data: too short".to_string());
         }
 
-        let salt = &data[0..16];
-        let nonce = &data[16..28];
-        let ciphertext = &data[28..];
+        // Bolt ⚡ Optimization: Use split_at for cleaner and slightly more efficient slicing.
+        let (salt, rest) = data.split_at(16);
+        let (nonce, ciphertext_and_tag) = rest.split_at(12);
+        let (ciphertext, tag_bytes) = ciphertext_and_tag.split_at(ciphertext_and_tag.len() - 16);
 
         let mut key = [0u8; 32];
         pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, 100_000, &mut key);
 
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
+        // Bolt ⚡ Optimization: Use new_from_slice for consistency and to avoid extra copies.
+        let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
 
         // Optimization: Avoid redundant allocations and copying by decrypting in-place.
-        // cipher.decrypt() would allocate a new Vec and copy the ciphertext+tag into it.
+        // cipher.decrypt() would allocate a new Vec and copy the ciphertext into it.
         // Format: [ciphertext][16-byte tag]
-        let tag_pos = ciphertext.len() - 16;
-        let mut buffer = ciphertext[..tag_pos].to_vec();
-        let tag = Tag::from_slice(&ciphertext[tag_pos..]);
+        let mut buffer = ciphertext.to_vec();
+        let tag = Tag::from_slice(tag_bytes);
 
         cipher.decrypt_in_place_detached(Nonce::from_slice(nonce), b"", &mut buffer, tag)
             .map_err(|e| e.to_string())?;
