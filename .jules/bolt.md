@@ -9,3 +9,7 @@
 ## 2025-05-24 - [Crypto RNG and Allocation Optimization]
 **Learning:** Initializing RNGs like `ThreadRng` multiple times in a single function call adds unnecessary overhead. Similarly, using high-level `decrypt` methods can lead to redundant copies of authentication tags when returning `Vec<u8>`. Early validation of input length in computationally expensive paths (like PBKDF2) is critical to prevent "denial of service" from malformed inputs.
 **Action:** Reuse RNG instances within a scope. Use `decrypt_in_place_detached` when possible to control allocations. Always fail fast before starting expensive operations like PBKDF2.
+
+## 2025-05-25 - [Combined RNG Calls and Slicing Optimization]
+**Learning:** Multiple small calls to random number generators or repetitive slicing can add unnecessary overhead in hot paths like crypto. Combining RNG fills for salt and nonce, and using `split_at` for buffer extraction, simplifies code and reduces micro-overhead.
+**Action:** In cryptographic or low-latency code, batch RNG requests if possible. Use `split_at` or `split_at_mut` to partition buffers cleanly in one go.
