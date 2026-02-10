@@ -42,9 +42,11 @@ impl Compressor for ZipCompressor {
         for i in 0..archive.len() {
             let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
 
-            // Pre-allocate buffer for each file's uncompressed data
-            let mut buf = Vec::with_capacity(file.size() as usize);
-            file.read_to_end(&mut buf).map_err(|e| e.to_string())?;
+            // Bolt ⚡ Optimization: Use read_exact into a pre-resized buffer instead of
+            // read_to_end with capacity. This avoids redundant EOF checks and
+            // additional read syscalls since the file size is already known.
+            let mut buf = vec![0u8; file.size() as usize];
+            file.read_exact(&mut buf).map_err(|e| e.to_string())?;
 
             entries.push(ArchiveEntry {
                 name: file.name().to_string(),

@@ -13,3 +13,7 @@
 ## 2025-05-25 - [Combined RNG Calls and Slicing Optimization]
 **Learning:** Multiple small calls to random number generators or repetitive slicing can add unnecessary overhead in hot paths like crypto. Combining RNG fills for salt and nonce, and using `split_at` for buffer extraction, simplifies code and reduces micro-overhead.
 **Action:** In cryptographic or low-latency code, batch RNG requests if possible. Use `split_at` or `split_at_mut` to partition buffers cleanly in one go.
+
+## 2025-05-26 - [Optimized Read for Known Sizes]
+**Learning:** Using `read_to_end` with a `Vec` that has capacity but no length still results in an extra `read` syscall to check for EOF. When the size is known exactly (like from a ZIP header), using `vec![0u8; size]` followed by `read_exact` is more efficient as it avoids the extra syscall and potential reallocations.
+**Action:** Prefer `read_exact` into a pre-resized buffer when the total data size is known in advance.
