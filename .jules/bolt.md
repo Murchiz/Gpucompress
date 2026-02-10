@@ -17,3 +17,7 @@
 ## 2025-05-26 - [Optimized Read for Known Sizes]
 **Learning:** Using `read_to_end` with a `Vec` that has capacity but no length still results in an extra `read` syscall to check for EOF. When the size is known exactly (like from a ZIP header), using `vec![0u8; size]` followed by `read_exact` is more efficient as it avoids the extra syscall and potential reallocations.
 **Action:** Prefer `read_exact` into a pre-resized buffer when the total data size is known in advance.
+
+## 2025-05-27 - [Direct Key Derivation and In-Place Decryption]
+**Learning:** In cryptographic operations using `aes-gcm` and `pbkdf2`, deriving the key directly into the `Key<Aes256Gcm>` buffer avoids redundant copies and stack allocations. Using `decrypt_in_place` (from the `AeadInPlace` trait) on a contiguous buffer of `[ciphertext][tag]` simplifies code and allows the library to handle tag verification and buffer truncation automatically, reducing slicing overhead.
+**Action:** Always aim to derive keys directly into their final container. Use `decrypt_in_place` when the archive format provides ciphertext and authentication tags contiguously.
