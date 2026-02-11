@@ -16,7 +16,7 @@ impl Compressor for PaqgCompressor {
         if let Some(ref accel) = self.accelerator {
             println!("Compressing {} entries with PAQG using {}", entries.len(), accel.name());
             // 1. Prepare contexts
-            // 2. Mix probabilities on GPU
+            // 2. Mix probabilities on GPU (Ensure [num_models][num_bits] layout for coalescing)
             // 3. Arithmetic code
             Ok(vec![0; 100]) // Mocked compression
         } else {

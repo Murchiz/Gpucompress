@@ -37,6 +37,10 @@ impl GpuAccelerator for VulkanAccelerator {
     }
 
     fn mix_probabilities(&self, _model_probs: &[f32], _weights: &[f32], num_bits: usize) -> Result<Vec<f32>, String> {
+        // In a real implementation, we would:
+        // 1. Map model_probs and weights (in [num_models][num_bits] layout) to GPU buffers
+        // 2. Dispatch the 'paqg' compute shader (optimized for coalesced access)
+        // 3. Retrieve the result from the output buffer
         println!("Mixing probabilities on Vulkan for {} bits", num_bits);
         // Mock result
         Ok(vec![0.5; num_bits])
