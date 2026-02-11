@@ -17,6 +17,11 @@ pub enum GpuBackend {
 pub trait GpuAccelerator {
     fn name(&self) -> &str;
     fn run_kernel(&self, name: &str, data: &mut [u8]) -> Result<(), String>;
+    /// Mixes probabilities from multiple models.
+    ///
+    /// # Layout Requirements
+    /// For optimal GPU performance (coalesced memory access), both `model_probs` and `weights`
+    /// must be provided in a `[num_models][num_bits]` layout (transposed).
     fn mix_probabilities(&self, model_probs: &[f32], weights: &[f32], num_bits: usize) -> Result<Vec<f32>, String>;
 }
 

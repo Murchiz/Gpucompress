@@ -28,8 +28,8 @@ impl GpuAccelerator for CudaAccelerator {
     fn mix_probabilities(&self, model_probs: &[f32], weights: &[f32], num_bits: usize) -> Result<Vec<f32>, String> {
         // In a real implementation, we would:
         // 1. Allocate GPU memory
-        // 2. Copy model_probs and weights to GPU
-        // 3. Launch the 'paq_mix_probabilities' kernel
+        // 2. Copy model_probs and weights (in [num_models][num_bits] layout) to GPU
+        // 3. Launch the 'paq_mix_probabilities' kernel (optimized for coalesced access)
         // 4. Copy the result back
         println!("Mixing probabilities on CUDA for {} bits", num_bits);
 

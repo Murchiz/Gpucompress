@@ -21,3 +21,7 @@
 ## 2025-05-27 - [Direct Key Derivation and In-Place Decryption]
 **Learning:** In cryptographic operations using `aes-gcm` and `pbkdf2`, deriving the key directly into the `Key<Aes256Gcm>` buffer avoids redundant copies and stack allocations. Using `decrypt_in_place` (from the `AeadInPlace` trait) on a contiguous buffer of `[ciphertext][tag]` simplifies code and allows the library to handle tag verification and buffer truncation automatically, reducing slicing overhead.
 **Action:** Always aim to derive keys directly into their final container. Use `decrypt_in_place` when the archive format provides ciphertext and authentication tags contiguously.
+
+## 2025-05-28 - [GPU Memory Layout Coalescing]
+**Learning:** Memory access patterns are critical for GPU performance. The `[num_bits][num_models]` layout leads to non-coalesced memory access, causing massive performance degradation. Transposing the layout to `[num_models][num_bits]` allows adjacent threads to access adjacent memory, enabling hardware to coalesce multiple requests into a single transaction.
+**Action:** Always design GPU-facing data layouts to favor coalesced access (adjacent threads should access adjacent memory). Use `[num_models][num_bits]` for per-bit model processing.
