@@ -1,12 +1,16 @@
-use lat_core::{Compressor, ArchiveEntry};
-use std::io::{Read, Write, Cursor};
-use zip::{ZipWriter, ZipArchive};
+use lat_core::{ArchiveEntry, Compressor};
+use std::io::{Cursor, Read, Write};
 use zip::write::FileOptions;
+use zip::{ZipArchive, ZipWriter};
 
 pub struct ZipCompressor;
 
 impl Compressor for ZipCompressor {
-    fn compress(&self, entries: &[ArchiveEntry], _password: Option<&str>) -> Result<Vec<u8>, String> {
+    fn compress(
+        &self,
+        entries: &[ArchiveEntry],
+        _password: Option<&str>,
+    ) -> Result<Vec<u8>, String> {
         // Bolt ⚡ Optimization: Pre-allocate buffer with an accurate estimate of both
         // uncompressed data AND ZIP metadata overhead (headers, central directory).
         // This prevents multiple expensive reallocations for archives with many small files.
@@ -21,11 +25,13 @@ impl Compressor for ZipCompressor {
         let mut buf = Vec::with_capacity(total_uncompressed_size + total_overhead);
         {
             let mut writer = ZipWriter::new(Cursor::new(&mut buf));
-            let options = FileOptions::default()
-                .compression_method(zip::CompressionMethod::Deflated);
+            let options =
+                FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
             for entry in entries {
-                writer.start_file(&entry.name, options).map_err(|e| e.to_string())?;
+                writer
+                    .start_file(&entry.name, options)
+                    .map_err(|e| e.to_string())?;
                 writer.write_all(&entry.data).map_err(|e| e.to_string())?;
             }
             writer.finish().map_err(|e| e.to_string())?;
@@ -33,7 +39,11 @@ impl Compressor for ZipCompressor {
         Ok(buf)
     }
 
-    fn decompress(&self, archive_data: &[u8], _password: Option<&str>) -> Result<Vec<ArchiveEntry>, String> {
+    fn decompress(
+        &self,
+        archive_data: &[u8],
+        _password: Option<&str>,
+    ) -> Result<Vec<ArchiveEntry>, String> {
         let mut archive = ZipArchive::new(Cursor::new(archive_data)).map_err(|e| e.to_string())?;
 
         // Pre-allocate the entries vector
@@ -76,8 +86,12 @@ mod tests {
             },
         ];
 
-        let compressed = compressor.compress(&entries, None).expect("Compression failed");
-        let decompressed = compressor.decompress(&compressed, None).expect("Decompression failed");
+        let compressed = compressor
+            .compress(&entries, None)
+            .expect("Compression failed");
+        let decompressed = compressor
+            .decompress(&compressed, None)
+            .expect("Decompression failed");
 
         assert_eq!(entries.len(), decompressed.len());
         assert_eq!(entries[0].name, decompressed[0].name);
