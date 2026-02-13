@@ -29,3 +29,7 @@
 ## 2025-05-29 - [Optimized Decryption Allocation]
 **Learning:** When decrypting a slice that contains both ciphertext and authentication tag, using `decrypt_in_place` requires first copying the slice into an owned `Vec`. Using `cipher.decrypt` (non-in-place) instead allows the library to read directly from the input slice and write to a newly allocated plaintext `Vec`, avoiding one redundant `memcpy` of the entire ciphertext.
 **Action:** Prefer `cipher.decrypt` over `to_vec()` followed by `decrypt_in_place` when the input is a slice and the desired output is an owned `Vec`.
+
+## 2025-05-30 - [Pre-allocated File Buffers in 7z Decompression]
+**Learning:** Using `std::io::copy` to read from an archive entry into a `Vec` is inefficient because it uses a small internal buffer (usually 8KB) and repeatedly reallocates the target `Vec`. When the uncompressed size is known (as in 7z or ZIP), pre-allocating the `Vec` and using `read_exact` is much faster as it avoids all intermediate reallocations and the overhead of multiple small `write` calls.
+**Action:** Always pre-allocate file buffers using known size and use `read_exact` for decompression.
