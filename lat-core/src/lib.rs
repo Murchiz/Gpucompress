@@ -4,8 +4,13 @@ pub struct ArchiveEntry {
 }
 
 pub trait Compressor {
-    fn compress(&self, entries: &[ArchiveEntry], password: Option<&str>) -> Result<Vec<u8>, String>;
-    fn decompress(&self, archive: &[u8], password: Option<&str>) -> Result<Vec<ArchiveEntry>, String>;
+    fn compress(&self, entries: &[ArchiveEntry], password: Option<&str>)
+    -> Result<Vec<u8>, String>;
+    fn decompress(
+        &self,
+        archive: &[u8],
+        password: Option<&str>,
+    ) -> Result<Vec<ArchiveEntry>, String>;
 }
 
 pub enum GpuBackend {
@@ -22,7 +27,12 @@ pub trait GpuAccelerator {
     /// # Layout Requirements
     /// For optimal GPU performance (coalesced memory access), both `model_probs` and `weights`
     /// must be provided in a `[num_models][num_bits]` layout (transposed).
-    fn mix_probabilities(&self, model_probs: &[f32], weights: &[f32], num_bits: usize) -> Result<Vec<f32>, String>;
+    fn mix_probabilities(
+        &self,
+        model_probs: &[f32],
+        weights: &[f32],
+        num_bits: usize,
+    ) -> Result<Vec<f32>, String>;
 }
 
 pub struct CompressionOptions {
@@ -32,11 +42,11 @@ pub struct CompressionOptions {
 }
 
 pub mod crypto {
-    use aes_gcm::{Aes256Gcm, Nonce, KeyInit};
     use aes_gcm::aead::{Aead, AeadInPlace};
+    use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
     use pbkdf2::pbkdf2_hmac;
-    use sha2::Sha256;
     use rand::Rng;
+    use sha2::Sha256;
 
     pub fn encrypt(data: &[u8], password: &str) -> Result<Vec<u8>, String> {
         let mut rng = rand::thread_rng();
@@ -61,7 +71,8 @@ pub mod crypto {
         result.extend_from_slice(data);
 
         // Encrypt the data part in-place (starts at index 28)
-        let tag = cipher.encrypt_in_place_detached(Nonce::from_slice(nonce), b"", &mut result[28..])
+        let tag = cipher
+            .encrypt_in_place_detached(Nonce::from_slice(nonce), b"", &mut result[28..])
             .map_err(|e| e.to_string())?;
 
         // Append the authentication tag
@@ -90,7 +101,8 @@ pub mod crypto {
         // Bolt ⚡ Optimization: Use Aead::decrypt to avoid an extra allocation and memcpy.
         // cipher.decrypt() reads directly from the ciphertext slice and writes to a new
         // plaintext Vec, saving the overhead of manually copying ciphertext into a buffer.
-        let plaintext = cipher.decrypt(Nonce::from_slice(nonce), ciphertext_and_tag)
+        let plaintext = cipher
+            .decrypt(Nonce::from_slice(nonce), ciphertext_and_tag)
             .map_err(|e| e.to_string())?;
 
         Ok(plaintext)

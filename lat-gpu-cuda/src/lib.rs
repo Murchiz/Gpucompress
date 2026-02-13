@@ -1,15 +1,15 @@
+use cudarc::driver::{CudaContext, LaunchConfig};
 use lat_core::GpuAccelerator;
-use cudarc::driver::{CudaDevice, LaunchAsync, LaunchConfig};
 use std::sync::Arc;
 
 pub struct CudaAccelerator {
-    device: Arc<CudaDevice>,
+    context: Arc<CudaContext>,
 }
 
 impl CudaAccelerator {
     pub fn new() -> Result<Self, String> {
-        let device = CudaDevice::new(0).map_err(|e| e.to_string())?;
-        Ok(Self { device })
+        let context = CudaContext::new(0).map_err(|e| e.to_string())?;
+        Ok(Self { context })
     }
 }
 
@@ -25,7 +25,12 @@ impl GpuAccelerator for CudaAccelerator {
         Ok(())
     }
 
-    fn mix_probabilities(&self, model_probs: &[f32], weights: &[f32], num_bits: usize) -> Result<Vec<f32>, String> {
+    fn mix_probabilities(
+        &self,
+        model_probs: &[f32],
+        weights: &[f32],
+        num_bits: usize,
+    ) -> Result<Vec<f32>, String> {
         // In a real implementation, we would:
         // 1. Allocate GPU memory
         // 2. Copy model_probs and weights (in [num_models][num_bits] layout) to GPU

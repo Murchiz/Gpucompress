@@ -33,3 +33,11 @@
 ## 2025-05-30 - [Pre-allocated File Buffers in 7z Decompression]
 **Learning:** Using `std::io::copy` to read from an archive entry into a `Vec` is inefficient because it uses a small internal buffer (usually 8KB) and repeatedly reallocates the target `Vec`. When the uncompressed size is known (as in 7z or ZIP), pre-allocating the `Vec` and using `read_exact` is much faster as it avoids all intermediate reallocations and the overhead of multiple small `write` calls.
 **Action:** Always pre-allocate file buffers using known size and use `read_exact` for decompression.
+
+## 2025-05-31 - [CUDA Version Detection and API Modernization]
+**Learning:** Hardcoding CUDA versions in  leads to build failures in environments that don't match or where the build system doesn't expose the version. Using `cuda-version-from-build-system` in `cudarc` is more robust for local development. Additionally, major version updates (like `cudarc` 0.11 to 0.19) can involve significant renames (e.g., `CudaDevice` to `CudaContext`) that must be addressed in the wrapper code.
+**Action:** Use `cuda-version-from-build-system` for local CUDA integration. When upgrading GPU-related dependencies, verify struct renames and trait removals (`LaunchAsync`) in the safer abstraction layers.
+
+## 2025-05-31 - [CUDA Version Detection and API Modernization]
+**Learning:** Hardcoding CUDA versions in `Cargo.toml` leads to build failures in environments that don't match or where the build system doesn't expose the version. Using `cuda-version-from-build-system` in `cudarc` is more robust for local development. Additionally, major version updates (like `cudarc` 0.11 to 0.19) can involve significant renames (e.g., `CudaDevice` to `CudaContext`) that must be addressed in the wrapper code.
+**Action:** Use `cuda-version-from-build-system` for local CUDA integration. When upgrading GPU-related dependencies, verify struct renames and trait removals (`LaunchAsync`) in the safer abstraction layers.

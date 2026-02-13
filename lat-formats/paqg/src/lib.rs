@@ -12,9 +12,17 @@ impl PaqgCompressor {
 }
 
 impl Compressor for PaqgCompressor {
-    fn compress(&self, entries: &[ArchiveEntry], _password: Option<&str>) -> Result<Vec<u8>, String> {
+    fn compress(
+        &self,
+        entries: &[ArchiveEntry],
+        _password: Option<&str>,
+    ) -> Result<Vec<u8>, String> {
         if let Some(ref accel) = self.accelerator {
-            println!("Compressing {} entries with PAQG using {}", entries.len(), accel.name());
+            println!(
+                "Compressing {} entries with PAQG using {}",
+                entries.len(),
+                accel.name()
+            );
             // 1. Prepare contexts
             // 2. Mix probabilities on GPU (Ensure [num_models][num_bits] layout for coalescing)
             // 3. Arithmetic code
@@ -24,7 +32,11 @@ impl Compressor for PaqgCompressor {
         }
     }
 
-    fn decompress(&self, _archive: &[u8], _password: Option<&str>) -> Result<Vec<ArchiveEntry>, String> {
+    fn decompress(
+        &self,
+        _archive: &[u8],
+        _password: Option<&str>,
+    ) -> Result<Vec<ArchiveEntry>, String> {
         // TODO: Implement GPU-accelerated PAQ decompression
         Err("PAQG decompression not yet implemented".to_string())
     }

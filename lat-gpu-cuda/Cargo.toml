@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-cudarc = "0.11"
+cudarc = { version = "0.19", features = ["cuda-version-from-build-system", "driver", "nvrtc"] }
 lat-core = { path = "../lat-core" }

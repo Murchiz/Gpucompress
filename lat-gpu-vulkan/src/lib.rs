@@ -1,6 +1,6 @@
 use lat_core::GpuAccelerator;
-use wgpu;
 use std::sync::Arc;
+use wgpu;
 
 pub struct VulkanAccelerator {
     // wgpu abstracts over Vulkan/Metal/DX12
@@ -11,16 +11,25 @@ pub struct VulkanAccelerator {
 impl VulkanAccelerator {
     pub async fn new() -> Result<Self, String> {
         let instance = wgpu::Instance::default();
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            ..Default::default()
-        }).await.ok_or("Failed to find a GPU adapter")?;
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                ..Default::default()
+            })
+            .await
+            .ok_or("Failed to find a GPU adapter")?;
 
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("VulkanAccelerator"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::default(),
-        }, None).await.map_err(|e| e.to_string())?;
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some("VulkanAccelerator"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::default(),
+                },
+                None,
+            )
+            .await
+            .map_err(|e| e.to_string())?;
 
         Ok(Self { device, queue })
     }
@@ -36,7 +45,12 @@ impl GpuAccelerator for VulkanAccelerator {
         Ok(())
     }
 
-    fn mix_probabilities(&self, _model_probs: &[f32], _weights: &[f32], num_bits: usize) -> Result<Vec<f32>, String> {
+    fn mix_probabilities(
+        &self,
+        _model_probs: &[f32],
+        _weights: &[f32],
+        num_bits: usize,
+    ) -> Result<Vec<f32>, String> {
         // In a real implementation, we would:
         // 1. Map model_probs and weights (in [num_models][num_bits] layout) to GPU buffers
         // 2. Dispatch the 'paqg' compute shader (optimized for coalesced access)
