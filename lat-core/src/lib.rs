@@ -33,7 +33,7 @@ pub struct CompressionOptions {
 
 pub mod crypto {
     use aes_gcm::{Aes256Gcm, Nonce, KeyInit};
-    use aes_gcm::aead::AeadInPlace;
+    use aes_gcm::aead::{Aead, AeadInPlace};
     use pbkdf2::pbkdf2_hmac;
     use sha2::Sha256;
     use rand::Rng;
@@ -87,15 +87,13 @@ pub mod crypto {
 
         let cipher = Aes256Gcm::new(&key);
 
-        // Bolt ⚡ Optimization: Use decrypt_in_place to simplify the process and avoid
-        // explicit tag extraction. decrypt_in_place expects the tag to be at the end
-        // of the buffer and will automatically truncate it after verification.
-        let mut buffer = ciphertext_and_tag.to_vec();
-
-        cipher.decrypt_in_place(Nonce::from_slice(nonce), b"", &mut buffer)
+        // Bolt ⚡ Optimization: Use Aead::decrypt to avoid an extra allocation and memcpy.
+        // cipher.decrypt() reads directly from the ciphertext slice and writes to a new
+        // plaintext Vec, saving the overhead of manually copying ciphertext into a buffer.
+        let plaintext = cipher.decrypt(Nonce::from_slice(nonce), ciphertext_and_tag)
             .map_err(|e| e.to_string())?;
 
-        Ok(buffer)
+        Ok(plaintext)
     }
 }
 
