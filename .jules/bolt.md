@@ -25,3 +25,7 @@
 ## 2025-05-28 - [GPU Memory Layout Coalescing]
 **Learning:** Memory access patterns are critical for GPU performance. The `[num_bits][num_models]` layout leads to non-coalesced memory access, causing massive performance degradation. Transposing the layout to `[num_models][num_bits]` allows adjacent threads to access adjacent memory, enabling hardware to coalesce multiple requests into a single transaction.
 **Action:** Always design GPU-facing data layouts to favor coalesced access (adjacent threads should access adjacent memory). Use `[num_models][num_bits]` for per-bit model processing.
+
+## 2025-05-29 - [Optimized Decryption Allocation]
+**Learning:** When decrypting a slice that contains both ciphertext and authentication tag, using `decrypt_in_place` requires first copying the slice into an owned `Vec`. Using `cipher.decrypt` (non-in-place) instead allows the library to read directly from the input slice and write to a newly allocated plaintext `Vec`, avoiding one redundant `memcpy` of the entire ciphertext.
+**Action:** Prefer `cipher.decrypt` over `to_vec()` followed by `decrypt_in_place` when the input is a slice and the desired output is an owned `Vec`.
