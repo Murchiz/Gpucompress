@@ -41,3 +41,7 @@
 ## 2025-05-31 - [CUDA Version Detection and API Modernization]
 **Learning:** Hardcoding CUDA versions in `Cargo.toml` leads to build failures in environments that don't match or where the build system doesn't expose the version. Using `cuda-version-from-build-system` in `cudarc` is more robust for local development. Additionally, major version updates (like `cudarc` 0.11 to 0.19) can involve significant renames (e.g., `CudaDevice` to `CudaContext`) that must be addressed in the wrapper code.
 **Action:** Use `cuda-version-from-build-system` for local CUDA integration. When upgrading GPU-related dependencies, verify struct renames and trait removals (`LaunchAsync`) in the safer abstraction layers.
+
+## 2025-06-01 - [CUDA Build in CPU-only CI]
+**Learning:** Enabling `cuda-version-from-build-system` in `cudarc` causes a build-time panic if `nvcc` is missing. To support building in CPU-only CI environments while still targeting the latest CUDA version, use the `fallback-latest` feature. This allows the build to proceed using the highest supported version (e.g., 13.1) as a default when detection fails.
+**Action:** Always include `fallback-latest` alongside `cuda-version-from-build-system` to ensure CI compatibility for GPU-enabled crates.

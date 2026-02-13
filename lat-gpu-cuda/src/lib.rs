@@ -1,15 +1,15 @@
-use cudarc::driver::{CudaContext, LaunchConfig};
+use cudarc::driver::CudaContext;
 use lat_core::GpuAccelerator;
 use std::sync::Arc;
 
 pub struct CudaAccelerator {
-    context: Arc<CudaContext>,
+    _context: Arc<CudaContext>,
 }
 
 impl CudaAccelerator {
     pub fn new() -> Result<Self, String> {
         let context = CudaContext::new(0).map_err(|e| e.to_string())?;
-        Ok(Self { context })
+        Ok(Self { _context: context })
     }
 }
 
@@ -18,7 +18,7 @@ impl GpuAccelerator for CudaAccelerator {
         "CUDA"
     }
 
-    fn run_kernel(&self, name: &str, data: &mut [u8]) -> Result<(), String> {
+    fn run_kernel(&self, name: &str, _data: &mut [u8]) -> Result<(), String> {
         // This is a simplified wrapper. Real implementation would involve
         // loading the PTX/fatbin and managing buffers.
         println!("Running CUDA kernel: {}", name);
@@ -27,8 +27,8 @@ impl GpuAccelerator for CudaAccelerator {
 
     fn mix_probabilities(
         &self,
-        model_probs: &[f32],
-        weights: &[f32],
+        _model_probs: &[f32],
+        _weights: &[f32],
         num_bits: usize,
     ) -> Result<Vec<f32>, String> {
         // In a real implementation, we would:
