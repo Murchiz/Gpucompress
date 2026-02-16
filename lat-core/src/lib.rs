@@ -51,45 +51,56 @@ pub mod crypto {
     pub fn encrypt(data: &[u8], password: &str) -> Result<Vec<u8>, String> {
         let mut rng = rand::thread_rng();
 
-        // Bolt ⚡ Optimization: Combined RNG call for salt and nonce to reduce overhead.
-        let mut salt_nonce = [0u8; 28];
-        rng.fill(&mut salt_nonce);
-        let (salt, nonce) = salt_nonce.split_at(16);
+        // Bolt ⚡ Optimization: Pre-allocate result buffer and fill it directly with random
+        // salt and nonce. This avoids a temporary stack array and an extra memcpy.
+        let mut result = Vec::with_capacity(44 + data.len());
+        result.resize(28, 0);
+        rng.fill(&mut result[..28]);
 
         // Bolt ⚡ Optimization: Perform pbkdf2_hmac directly into the Key buffer to avoid
         // redundant copies. Key<Aes256Gcm> is a GenericArray<u8, U32>.
         let mut key = aes_gcm::Key::<Aes256Gcm>::default();
-        pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, 100_000, key.as_mut_slice());
+        pbkdf2_hmac::<Sha256>(
+            password.as_bytes(),
+            &result[..16],
+            100_000,
+            key.as_mut_slice(),
+        );
 
         let cipher = Aes256Gcm::new(&key);
 
-        // Optimization: Pre-allocate result buffer and encrypt in-place to avoid
-        // redundant allocations and copies.
-        // Format: [16-byte salt][12-byte nonce][ciphertext][16-byte tag]
-        let mut result = Vec::with_capacity(28 + data.len() + 16);
-        result.extend_from_slice(&salt_nonce);
+        // Append plaintext data. Pre-allocated capacity ensures no reallocation.
         result.extend_from_slice(data);
 
-        // Encrypt the data part in-place (starts at index 28)
+        // Encrypt the data part in-place (starts at index 28).
+        // Use split_at_mut to satisfy the borrow checker when passing both nonce and data.
+        let (header, ciphertext) = result.split_at_mut(28);
+        let nonce = &header[16..28];
         let tag = cipher
-            .encrypt_in_place_detached(Nonce::from_slice(nonce), b"", &mut result[28..])
+            .encrypt_in_place_detached(Nonce::from_slice(nonce), b"", ciphertext)
             .map_err(|e| e.to_string())?;
 
-        // Append the authentication tag
+        // Append the authentication tag. Capacity is guaranteed to be sufficient.
         result.extend_from_slice(tag.as_slice());
         Ok(result)
     }
 
     pub fn decrypt(data: &[u8], password: &str) -> Result<Vec<u8>, String> {
-        // Optimization: Fail fast if data is too short to contain salt, nonce, and tag.
+        // Bolt ⚡ Optimization: Fail fast if data is too short to contain salt, nonce, and tag.
         // 16 (salt) + 12 (nonce) + 16 (tag) = 44 bytes
         if data.len() < 44 {
             return Err("Invalid encrypted data: too short".to_string());
         }
 
-        // Bolt ⚡ Optimization: Simplified slicing.
         let (salt, rest) = data.split_at(16);
         let (nonce, ciphertext_and_tag) = rest.split_at(12);
+
+        // Bolt ⚡ Optimization: Additional fail-fast check for zeroed salt.
+        // A random 16-byte salt being all zeros has a probability of 1/2^128.
+        // This quickly catches zeroed-out or sparse files before starting PBKDF2.
+        if salt.iter().all(|&b| b == 0) {
+            return Err("Invalid encrypted data: possible zeroed or corrupted file".to_string());
+        }
 
         // Bolt ⚡ Optimization: Perform pbkdf2_hmac directly into the Key buffer to avoid
         // redundant copies.

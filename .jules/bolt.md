@@ -33,3 +33,11 @@
 ## 2025-05-30 - [Pre-allocated File Buffers in 7z Decompression]
 **Learning:** Using `std::io::copy` to read from an archive entry into a `Vec` is inefficient because it uses a small internal buffer (usually 8KB) and repeatedly reallocates the target `Vec`. When the uncompressed size is known (as in 7z or ZIP), pre-allocating the `Vec` and using `read_exact` is much faster as it avoids all intermediate reallocations and the overhead of multiple small `write` calls.
 **Action:** Always pre-allocate file buffers using known size and use `read_exact` for decompression.
+
+## 2025-06-01 - [Avoid Uninitialized Memory for Performance]
+**Learning:** While skipping zero-initialization of buffers (using `Vec::with_capacity` and `unsafe { set_len }`) can seem like a performance win, it is dangerous and easily leads to Undefined Behavior (UB) in Rust if references to that uninitialized memory are created (even via slicing). The performance cost of zero-initialization is often negligible compared to the risks.
+**Action:** Avoid `unsafe` for micro-optimizing buffer initialization. Use `vec![0u8; size]` or `resize(size, 0)` for safety.
+
+## 2025-06-02 - [Direct Buffer Filling and Borrow Checker in In-Place Crypto]
+**Learning:** In `encrypt` paths, we can avoid temporary stack arrays and extra `memcpy` calls by pre-allocating the `Vec`, resizing it to the header size, and filling it directly with RNG bytes. When using `encrypt_in_place_detached`, we must use `split_at_mut` to partition the buffer into non-overlapping slices to satisfy the borrow checker's requirement for simultaneous immutable (nonce) and mutable (ciphertext) access.
+**Action:** Use `Vec::resize` + `rng.fill` to build headers directly in the output buffer. Use `split_at_mut` to handle non-overlapping mutable/immutable slice requirements.
