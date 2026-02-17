@@ -95,10 +95,12 @@ pub mod crypto {
         let (salt, rest) = data.split_at(16);
         let (nonce, ciphertext_and_tag) = rest.split_at(12);
 
-        // Bolt ⚡ Optimization: Additional fail-fast check for zeroed salt.
-        // A random 16-byte salt being all zeros has a probability of 1/2^128.
-        // This quickly catches zeroed-out or sparse files before starting PBKDF2.
-        if salt.iter().all(|&b| b == 0) {
+        // Bolt ⚡ Optimization: Dual fail-fast check for zeroed salt or nonce.
+        // A random 16-byte salt or 12-byte nonce being all zeros is astronomically
+        // unlikely (1/2^128 and 1/2^96 respectively). This quickly catches zeroed-out
+        // or sparse files before starting the expensive 100k iteration PBKDF2.
+        // Slice comparison is also faster than a byte-by-byte iterator loop.
+        if salt == [0u8; 16] || nonce == [0u8; 12] {
             return Err("Invalid encrypted data: possible zeroed or corrupted file".to_string());
         }
 
