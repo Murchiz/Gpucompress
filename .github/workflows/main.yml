@@ -20,6 +20,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-targets --workspace --exclude lat-gpu-cuda
 
+  check-cuda:
+    name: Check CUDA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jimver/cuda-toolkit@v0.2.16
+        with:
+          cuda: '12.5.0'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p lat-gpu-cuda --all-targets
+
   fmt:
     name: Format
     runs-on: ubuntu-latest
@@ -36,10 +48,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --workspace --exclude lat-gpu-cuda
+
+  clippy-cuda:
+    name: Clippy CUDA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jimver/cuda-toolkit@v0.2.16
+        with:
+          cuda: '12.5.0'
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets --workspace --exclude lat-gpu-cuda
+      - run: cargo clippy -p lat-gpu-cuda --all-targets
 
   test:
     name: Test (${{ matrix.os }})
@@ -64,14 +88,3 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo doc --no-deps --workspace --exclude lat-gpu-cuda
-  check-cuda:
-    name: Check CUDA
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Jimver/cuda-toolkit@v0.2.16
-        with:
-          cuda: '12.5.0'
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo check -p lat-gpu-cuda
