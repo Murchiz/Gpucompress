@@ -41,3 +41,7 @@
 ## 2025-06-02 - [Direct Buffer Filling and Borrow Checker in In-Place Crypto]
 **Learning:** In `encrypt` paths, we can avoid temporary stack arrays and extra `memcpy` calls by pre-allocating the `Vec`, resizing it to the header size, and filling it directly with RNG bytes. When using `encrypt_in_place_detached`, we must use `split_at_mut` to partition the buffer into non-overlapping slices to satisfy the borrow checker's requirement for simultaneous immutable (nonce) and mutable (ciphertext) access.
 **Action:** Use `Vec::resize` + `rng.fill` to build headers directly in the output buffer. Use `split_at_mut` to handle non-overlapping mutable/immutable slice requirements.
+
+## 2025-06-03 - [Dual Fail-Fast and Loop Invariant Extraction]
+**Learning:** In paths involving heavy computation like PBKDF2 (100k iterations), extending "fail-fast" checks to all header components (salt and nonce) using optimized slice comparisons (`== [0u8; N]`) provides a significant safeguard against zeroed-out or corrupted data. Additionally, extracting loop-invariant arithmetic (like constant metadata sizes) from capacity estimation loops reduces redundant operations in hot paths.
+**Action:** Always look for secondary fail-fast opportunities in expensive cryptographic paths. Move constant calculations outside of loops, especially when estimating sizes for large collections.

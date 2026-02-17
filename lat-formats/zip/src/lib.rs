@@ -15,12 +15,14 @@ impl Compressor for ZipCompressor {
         // uncompressed data AND ZIP metadata overhead (headers, central directory).
         // This prevents multiple expensive reallocations for archives with many small files.
         let mut total_uncompressed_size = 0;
-        let mut total_overhead = 22; // End of Central Directory Record
+        let mut total_name_len = 0;
         for entry in entries {
             total_uncompressed_size += entry.data.len();
-            // Overhead per file: 30 (Local File Header) + 46 (Central Directory Header) + 2 * name.len()
-            total_overhead += 76 + 2 * entry.name.len();
+            total_name_len += entry.name.len();
         }
+        // Metadata overhead per file: 30 (Local File Header) + 46 (Central Directory Header) + 2 * name.len()
+        // Moving the constant 76 bytes per entry and 22 bytes EOCD outside the loop reduces arithmetic operations.
+        let total_overhead = 22 + (76 * entries.len()) + (2 * total_name_len);
 
         let mut buf = Vec::with_capacity(total_uncompressed_size + total_overhead);
         {
