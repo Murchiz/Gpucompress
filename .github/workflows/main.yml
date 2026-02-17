@@ -25,11 +25,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Jimver/cuda-toolkit@v0.2.16
+      - uses: Jimver/cuda-toolkit@v0.2.21
+        id: cuda-toolkit
         with:
-          cuda: '12.5.0'
+          cuda: '12.4.0'
+          method: 'network'
+          sub-packages: '["nvcc", "cudart"]'
+          use-github-cache: false
+          use-local-cache: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: cuda
       - run: cargo check -p lat-gpu-cuda --all-targets
 
   fmt:
@@ -48,6 +55,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets --workspace --exclude lat-gpu-cuda
 
@@ -56,13 +65,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Jimver/cuda-toolkit@v0.2.16
+      - uses: Jimver/cuda-toolkit@v0.2.21
+        id: cuda-toolkit
         with:
-          cuda: '12.5.0'
+          cuda: '12.4.0'
+          method: 'network'
+          sub-packages: '["nvcc", "cudart"]'
+          use-github-cache: false
+          use-local-cache: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: cuda
       - run: cargo clippy -p lat-gpu-cuda --all-targets
 
   test:
