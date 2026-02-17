@@ -53,7 +53,7 @@ impl Compressor for SevenZCompressor {
                 let size = file.size() as usize;
                 let mut buf = vec![0u8; size];
                 std::io::Read::read_exact(reader, &mut buf)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+                    .map_err(|e| std::io::Error::other(e.to_string()))?;
 
                 entries.push(ArchiveEntry {
                     name: file.name().to_string(),
