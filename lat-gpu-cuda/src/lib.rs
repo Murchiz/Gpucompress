@@ -3,13 +3,13 @@ use lat_core::GpuAccelerator;
 use std::sync::Arc;
 
 pub struct CudaAccelerator {
-    device: Arc<CudaDevice>,
+    _device: Arc<CudaDevice>,
 }
 
 impl CudaAccelerator {
     pub fn new() -> Result<Self, String> {
         let device = CudaDevice::new(0).map_err(|e: DriverError| format!("CUDA error: {:?}", e))?;
-        Ok(Self { device })
+        Ok(Self { _device: device })
     }
 }
 
