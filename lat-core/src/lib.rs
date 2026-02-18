@@ -44,7 +44,7 @@ pub struct CompressionOptions {
 pub mod crypto {
     use aes_gcm::aead::{Aead, AeadInPlace};
     use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
-    use pbkdf2::pbkdf2_hmac;
+    use pbkdf2::pbkdf2_hmac_array;
     use rand::Rng;
     use sha2::Sha256;
 
@@ -57,17 +57,10 @@ pub mod crypto {
         result.resize(28, 0);
         rng.fill(&mut result[..28]);
 
-        // Bolt ⚡ Optimization: Perform pbkdf2_hmac directly into the Key buffer to avoid
-        // redundant copies. Key<Aes256Gcm> is a GenericArray<u8, U32>.
-        let mut key = aes_gcm::Key::<Aes256Gcm>::default();
-        pbkdf2_hmac::<Sha256>(
-            password.as_bytes(),
-            &result[..16],
-            100_000,
-            key.as_mut_slice(),
-        );
-
-        let cipher = Aes256Gcm::new(&key);
+        // Bolt ⚡ Optimization: Use pbkdf2_hmac_array for more efficient key derivation.
+        // This avoids manual buffer initialization and slicing.
+        let key = pbkdf2_hmac_array::<Sha256, 32>(password.as_bytes(), &result[..16], 100_000);
+        let cipher = Aes256Gcm::new(&key.into());
 
         // Append plaintext data. Pre-allocated capacity ensures no reallocation.
         result.extend_from_slice(data);
@@ -92,24 +85,20 @@ pub mod crypto {
             return Err("Invalid encrypted data: too short".to_string());
         }
 
-        let (salt, rest) = data.split_at(16);
-        let (nonce, ciphertext_and_tag) = rest.split_at(12);
+        // Bolt ⚡ Optimization: Consolidate slicing to reduce metadata updates.
+        let (header, ciphertext_and_tag) = data.split_at(28);
+        let salt = &header[..16];
+        let nonce = &header[16..];
 
-        // Bolt ⚡ Optimization: Dual fail-fast check for zeroed salt or nonce.
-        // A random 16-byte salt or 12-byte nonce being all zeros is astronomically
-        // unlikely (1/2^128 and 1/2^96 respectively). This quickly catches zeroed-out
-        // or sparse files before starting the expensive 100k iteration PBKDF2.
-        // Slice comparison is also faster than a byte-by-byte iterator loop.
-        if salt == [0u8; 16] || nonce == [0u8; 12] {
+        // Bolt ⚡ Optimization: Dual fail-fast check for zeroed salt or nonce with an
+        // initial byte check to quickly skip non-zeroed slices (99.6% of random data).
+        if (salt[0] == 0 && salt == [0u8; 16]) || (nonce[0] == 0 && nonce == [0u8; 12]) {
             return Err("Invalid encrypted data: possible zeroed or corrupted file".to_string());
         }
 
-        // Bolt ⚡ Optimization: Perform pbkdf2_hmac directly into the Key buffer to avoid
-        // redundant copies.
-        let mut key = aes_gcm::Key::<Aes256Gcm>::default();
-        pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, 100_000, key.as_mut_slice());
-
-        let cipher = Aes256Gcm::new(&key);
+        // Bolt ⚡ Optimization: Use pbkdf2_hmac_array for more efficient key derivation.
+        let key = pbkdf2_hmac_array::<Sha256, 32>(password.as_bytes(), salt, 100_000);
+        let cipher = Aes256Gcm::new(&key.into());
 
         // Bolt ⚡ Optimization: Use Aead::decrypt to avoid an extra allocation and memcpy.
         // cipher.decrypt() reads directly from the ciphertext slice and writes to a new
