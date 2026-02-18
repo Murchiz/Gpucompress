@@ -2871,6 +2871,9 @@ dependencies = [
 [[package]]
 name = "lat-format"
 version = "0.1.0"
+dependencies = [
+ "lat-core",
+]
 
 [[package]]
 name = "lat-gpu-cuda"
@@ -2905,6 +2908,9 @@ dependencies = [
 [[package]]
 name = "lat-paqg"
 version = "0.1.0"
+dependencies = [
+ "lat-core",
+]
 
 [[package]]
 name = "lat-zip"

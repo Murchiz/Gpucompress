@@ -1,4 +1,4 @@
-use lat_core::{Compressor, GpuAccelerator};
+use lat_core::{ArchiveEntry, Compressor, GpuAccelerator};
 use std::sync::Arc;
 
 pub struct LatCompressor {

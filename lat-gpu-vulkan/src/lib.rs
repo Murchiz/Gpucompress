@@ -1,11 +1,9 @@
 use lat_core::GpuAccelerator;
-use std::sync::Arc;
-use wgpu;
 
 pub struct VulkanAccelerator {
     // wgpu abstracts over Vulkan/Metal/DX12
-    device: wgpu::Device,
-    queue: wgpu::Queue,
+    _device: wgpu::Device,
+    _queue: wgpu::Queue,
 }
 
 impl VulkanAccelerator {
@@ -31,7 +29,10 @@ impl VulkanAccelerator {
             .await
             .map_err(|e| e.to_string())?;
 
-        Ok(Self { device, queue })
+        Ok(Self {
+            _device: device,
+            _queue: queue,
+        })
     }
 }
 
