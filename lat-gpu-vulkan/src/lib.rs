@@ -29,7 +29,10 @@ impl VulkanAccelerator {
             .await
             .map_err(|e| e.to_string())?;
 
-        Ok(Self { _device: device, _queue: queue })
+        Ok(Self {
+            _device: device,
+            _queue: queue,
+        })
     }
 }
 
