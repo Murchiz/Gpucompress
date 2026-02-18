@@ -45,3 +45,7 @@
 ## 2025-06-03 - [Dual Fail-Fast and Loop Invariant Extraction]
 **Learning:** In paths involving heavy computation like PBKDF2 (100k iterations), extending "fail-fast" checks to all header components (salt and nonce) using optimized slice comparisons (`== [0u8; N]`) provides a significant safeguard against zeroed-out or corrupted data. Additionally, extracting loop-invariant arithmetic (like constant metadata sizes) from capacity estimation loops reduces redundant operations in hot paths.
 **Action:** Always look for secondary fail-fast opportunities in expensive cryptographic paths. Move constant calculations outside of loops, especially when estimating sizes for large collections.
+
+## 2025-06-04 - [Short-Circuit Slice Comparisons and Idiomatic Key Derivation]
+**Learning:** While Rust's slice comparisons are fast, an explicit first-byte check (`salt[0] == 0`) can short-circuit the comparison for the 255/256 cases where the first byte is non-zero, avoiding the full array comparison overhead entirely in the common path for random data. Additionally, using `pbkdf2_hmac_array` instead of `pbkdf2_hmac` allows the compiler to reason better about fixed-size key buffers, avoiding manual zero-initialization and slicing.
+**Action:** Use first-byte short-circuits for slice equality checks against constants when dealing with high-entropy data. Prefer array-based cryptographic APIs (`*_array`) to leverage fixed-size optimizations and cleaner code.
