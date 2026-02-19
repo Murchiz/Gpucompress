@@ -86,9 +86,9 @@ pub mod crypto {
         }
 
         // Bolt ⚡ Optimization: Consolidate slicing to reduce metadata updates.
+        // Use split_at to partition the header into salt and nonce in one go.
         let (header, ciphertext_and_tag) = data.split_at(28);
-        let salt = &header[..16];
-        let nonce = &header[16..];
+        let (salt, nonce) = header.split_at(16);
 
         // Bolt ⚡ Optimization: Dual fail-fast check for zeroed salt or nonce with an
         // initial byte check to quickly skip non-zeroed slices (99.6% of random data).
