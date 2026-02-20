@@ -134,37 +134,38 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_extract_clicked(move || {
         let ui = ui_handle.unwrap();
         if let Some(archive_path) = FileDialog::new().pick_file()
-            && let Some(dest_dir) = FileDialog::new().pick_folder() {
-                ui.set_status_text("Decompressing...".into());
+            && let Some(dest_dir) = FileDialog::new().pick_folder()
+        {
+            ui.set_status_text("Decompressing...".into());
 
-                let ext = archive_path
-                    .extension()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or_default();
-                let compressor: Box<dyn Compressor> = match ext {
-                    "7z" => Box::new(SevenZCompressor),
-                    "lat" => Box::new(LatCompressor::new(accel_clone.clone())),
-                    "paq" => Box::new(PaqgCompressor::new(accel_clone.clone())),
-                    _ => Box::new(ZipCompressor),
-                };
+            let ext = archive_path
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default();
+            let compressor: Box<dyn Compressor> = match ext {
+                "7z" => Box::new(SevenZCompressor),
+                "lat" => Box::new(LatCompressor::new(accel_clone.clone())),
+                "paq" => Box::new(PaqgCompressor::new(accel_clone.clone())),
+                _ => Box::new(ZipCompressor),
+            };
 
-                match fs::read(&archive_path) {
-                    Ok(archive_data) => match compressor.decompress(&archive_data, None) {
-                        Ok(entries) => {
-                            for entry in entries {
-                                let path = dest_dir.join(entry.name);
-                                if let Some(parent) = path.parent() {
-                                    let _ = fs::create_dir_all(parent);
-                                }
-                                let _ = fs::write(path, entry.data);
+            match fs::read(&archive_path) {
+                Ok(archive_data) => match compressor.decompress(&archive_data, None) {
+                    Ok(entries) => {
+                        for entry in entries {
+                            let path = dest_dir.join(entry.name);
+                            if let Some(parent) = path.parent() {
+                                let _ = fs::create_dir_all(parent);
                             }
-                            ui.set_status_text("Extraction complete".into());
+                            let _ = fs::write(path, entry.data);
                         }
-                        Err(e) => ui.set_status_text(format!("Decompression failed: {}", e).into()),
-                    },
-                    Err(e) => ui.set_status_text(format!("Error reading archive: {}", e).into()),
-                }
+                        ui.set_status_text("Extraction complete".into());
+                    }
+                    Err(e) => ui.set_status_text(format!("Decompression failed: {}", e).into()),
+                },
+                Err(e) => ui.set_status_text(format!("Error reading archive: {}", e).into()),
             }
+        }
     });
 
     let ui_handle = ui.as_weak();
@@ -172,20 +173,22 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_test_clicked(move || {
         let ui = ui_handle.unwrap();
         let index = ui.get_selected_index();
-        if index >= 0 && (index as usize) < files_model_clone.row_count()
-            && let Some(file) = files_model_clone.row_data(index as usize) {
-                let path = PathBuf::from(file.path.as_str());
-                ui.set_status_text(format!("Testing {}...", file.name).into());
-                if let Ok(data) = fs::read(&path) {
-                    if ZipCompressor.decompress(&data, None).is_ok() {
-                        ui.set_status_text("Archive integrity verified (ZIP)".into());
-                    } else if SevenZCompressor.decompress(&data, None).is_ok() {
-                        ui.set_status_text("Archive integrity verified (7z)".into());
-                    } else {
-                        ui.set_status_text("Could not verify archive format".into());
-                    }
+        if index >= 0
+            && (index as usize) < files_model_clone.row_count()
+            && let Some(file) = files_model_clone.row_data(index as usize)
+        {
+            let path = PathBuf::from(file.path.as_str());
+            ui.set_status_text(format!("Testing {}...", file.name).into());
+            if let Ok(data) = fs::read(&path) {
+                if ZipCompressor.decompress(&data, None).is_ok() {
+                    ui.set_status_text("Archive integrity verified (ZIP)".into());
+                } else if SevenZCompressor.decompress(&data, None).is_ok() {
+                    ui.set_status_text("Archive integrity verified (7z)".into());
+                } else {
+                    ui.set_status_text("Could not verify archive format".into());
                 }
             }
+        }
     });
 
     let ui_handle = ui.as_weak();
@@ -193,16 +196,18 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_info_clicked(move || {
         let ui = ui_handle.unwrap();
         let index = ui.get_selected_index();
-        if index >= 0 && (index as usize) < files_model_clone.row_count()
-            && let Some(file) = files_model_clone.row_data(index as usize) {
-                ui.set_status_text(
-                    format!(
-                        "File: {} | Size: {} | Path: {}",
-                        file.name, file.size, file.path
-                    )
-                    .into(),
-                );
-            }
+        if index >= 0
+            && (index as usize) < files_model_clone.row_count()
+            && let Some(file) = files_model_clone.row_data(index as usize)
+        {
+            ui.set_status_text(
+                format!(
+                    "File: {} | Size: {} | Path: {}",
+                    file.name, file.size, file.path
+                )
+                .into(),
+            );
+        }
     });
 
     ui.run()
