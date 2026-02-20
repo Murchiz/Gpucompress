@@ -1,40 +1,121 @@
-import { Button, VerticalBox, HorizontalBox, ListView, StandardButton } from "std-widgets.slint";
+import { Button, VerticalBox, HorizontalBox, ListView, StandardButton, ComboBox } from "std-widgets.slint";
+
+export struct FileEntry {
+    name: string,
+    size: string,
+    date: string,
+    path: string,
+}
 
 export component AppWindow inherits Window {
     title: "Lat Compressor";
-    min-width: 600px;
-    min-height: 400px;
+    min-width: 800px;
+    min-height: 600px;
+    background: #1a1a1a;
 
-    callback compress_clicked();
-    callback decompress_clicked();
+    callback add_clicked();
+    callback extract_clicked();
+    callback test_clicked();
+    callback delete_clicked();
+    callback info_clicked();
+    callback compress_clicked(string); // string is the format
+
+    in-out property <[FileEntry]> files: [];
+    in-out property <int> selected_index: -1;
+    in property <string> gpu_status: "Detecting...";
+    in property <color> gpu_color: gray;
+    in property <string> status_text: "Ready";
 
     VerticalBox {
+        padding: 15px;
+        spacing: 12px;
+
         HorizontalBox {
+            spacing: 10px;
             alignment: start;
-            Button { text: "Add"; clicked => { /* ... */ } }
-            Button { text: "Extract To"; clicked => { decompress_clicked() } }
-            Button { text: "Test"; }
-            Button { text: "Delete"; }
-            Button { text: "Information"; }
-            Button { text: "Compress"; primary: true; clicked => { compress_clicked() } }
+            Button {
+                text: "Add";
+                clicked => { add_clicked() }
+            }
+            Button {
+                text: "Extract To";
+                clicked => { extract_clicked() }
+            }
+            Button {
+                text: "Test";
+                enabled: selected_index != -1;
+                clicked => { test_clicked() }
+            }
+            Button {
+                text: "Delete";
+                enabled: selected_index != -1;
+                clicked => { delete_clicked() }
+            }
+            Button {
+                text: "Information";
+                enabled: selected_index != -1;
+                clicked => { info_clicked() }
+            }
+
+            Rectangle { width: 10px; } // Spacer
+
+            Text { text: "Format:"; vertical-alignment: center; color: #ccc; }
+            format_selector := ComboBox {
+                width: 100px;
+                model: ["Zip", "7z", ".lat", "PAQG"];
+                current-value: "Zip";
+            }
+
+            Button {
+                text: "Compress";
+                primary: true;
+                enabled: files.length > 0;
+                clicked => { compress_clicked(format_selector.current_value) }
+            }
+        }
+
+        // File List Header
+        Rectangle {
+            height: 30px;
+            background: #2d2d2d;
+            border-radius: 4px;
+            HorizontalBox {
+                padding-left: 10px;
+                padding-right: 10px;
+                Text { text: "Name"; width: 350px; font-weight: 700; color: #eee; vertical-alignment: center; }
+                Text { text: "Size"; width: 120px; font-weight: 700; color: #eee; vertical-alignment: center; }
+                Text { text: "Date"; font-weight: 700; color: #eee; vertical-alignment: center; }
+            }
         }
 
         ListView {
-            // Placeholder for file list
-            for data in [
-                { name: "Documents", size: "DIR", date: "2023-10-27" },
-                { name: "photo.jpg", size: "1.2 MB", date: "2023-10-25" },
-                { name: "project.zip", size: "4.5 MB", date: "2023-10-24" },
-            ] : HorizontalBox {
-                Text { text: data.name; width: 200px; }
-                Text { text: data.size; width: 100px; }
-                Text { text: data.date; }
+            for data[i] in files : Rectangle {
+                height: 40px;
+                background: i == selected_index ? #34495e : (Math.mod(i, 2) == 0 ? #252525 : #212121);
+                border-radius: 2px;
+
+                TouchArea {
+                    clicked => { selected_index = i; }
+                }
+
+                HorizontalBox {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    Text { text: data.name; width: 350px; color: #ecf0f1; vertical-alignment: center; overflow: elide; }
+                    Text { text: data.size; width: 120px; color: #bdc3c7; vertical-alignment: center; }
+                    Text { text: data.date; color: #bdc3c7; vertical-alignment: center; }
+                }
             }
         }
 
         HorizontalBox {
-            alignment: end;
-            Text { text: "GPU Acceleration: CUDA (Active)"; color: green; }
+            alignment: space-between;
+            Text { text: status_text; color: #95a5a6; font-italic: true; vertical-alignment: center; }
+            HorizontalBox {
+                spacing: 5px;
+                Text { text: "GPU Acceleration:"; color: #7f8c8d; vertical-alignment: center; }
+                Text { text: gpu_status; color: gpu_color; font-weight: 700; vertical-alignment: center; }
+            }
         }
     }
 }

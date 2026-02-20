@@ -10,6 +10,11 @@ lat-zip = { path = "../lat-formats/zip" }
 lat-7z = { path = "../lat-formats/7z" }
 lat-paqg = { path = "../lat-formats/paqg" }
 lat-format = { path = "../lat-formats/lat" }
+lat-gpu-cuda = { path = "../lat-gpu-cuda" }
+lat-gpu-vulkan = { path = "../lat-gpu-vulkan" }
+rfd = "0.14"
+chrono = "0.4"
+pollster = "0.3"
 
 [build-dependencies]
 slint-build = "1.4"
