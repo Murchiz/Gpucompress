@@ -49,3 +49,7 @@
 ## 2025-06-04 - [Short-Circuit Slice Comparisons and Idiomatic Key Derivation]
 **Learning:** While Rust's slice comparisons are fast, an explicit first-byte check (`salt[0] == 0`) can short-circuit the comparison for the 255/256 cases where the first byte is non-zero, avoiding the full array comparison overhead entirely in the common path for random data. Additionally, using `pbkdf2_hmac_array` instead of `pbkdf2_hmac` allows the compiler to reason better about fixed-size key buffers, avoiding manual zero-initialization and slicing.
 **Action:** Use first-byte short-circuits for slice equality checks against constants when dealing with high-entropy data. Prefer array-based cryptographic APIs (`*_array`) to leverage fixed-size optimizations and cleaner code.
+
+## 2025-06-05 - [Syscall Caching and UI-to-Backend Pre-allocation]
+**Learning:** Redundant filesystem syscalls like `fs::create_dir_all` can become a significant bottleneck when processing large archives with many files in the same subdirectories. Caching created directories in a `HashSet` provides a cheap way to skip these calls. Furthermore, always bridge the UI-to-backend gap efficiently by pre-allocating collection vectors (e.g., `Vec::with_capacity`) when the size is known from the UI model.
+**Action:** Use a `HashSet` to cache and skip redundant filesystem operations in loops. Always pre-allocate vectors when bridging data from UI models to processing backends.

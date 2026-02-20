@@ -10,6 +10,7 @@ use lat_paqg::PaqgCompressor;
 use lat_zip::ZipCompressor;
 use rfd::FileDialog;
 use slint::{Color, Model, ModelRc, SharedString, VecModel};
+use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -92,8 +93,11 @@ fn main() -> Result<(), slint::PlatformError> {
         if let Some(dest_path) = dest {
             ui.set_status_text(format!("Compressing to {}...", format_str).into());
 
-            let mut entries = Vec::new();
-            for i in 0..files_model_clone.row_count() {
+            // Bolt ⚡ Optimization: Pre-allocate the entries vector with the known number of files.
+            // This avoids multiple expensive reallocations and memcpys during the collection phase.
+            let count = files_model_clone.row_count();
+            let mut entries = Vec::with_capacity(count);
+            for i in 0..count {
                 if let Some(file) = files_model_clone.row_data(i) {
                     let path = PathBuf::from(file.path.as_str());
                     if let Ok(data) = fs::read(&path) {
@@ -152,10 +156,17 @@ fn main() -> Result<(), slint::PlatformError> {
             match fs::read(&archive_path) {
                 Ok(archive_data) => match compressor.decompress(&archive_data, None) {
                     Ok(entries) => {
+                        // Bolt ⚡ Optimization: Use a HashSet to cache created directories.
+                        // This avoids redundant and expensive create_dir_all syscalls when
+                        // extracting many files into the same subdirectory.
+                        let mut created_dirs = HashSet::with_capacity(entries.len() / 4);
                         for entry in entries {
                             let path = dest_dir.join(entry.name);
-                            if let Some(parent) = path.parent() {
+                            if let Some(parent) = path.parent()
+                                && !created_dirs.contains(parent)
+                            {
                                 let _ = fs::create_dir_all(parent);
+                                created_dirs.insert(parent.to_path_buf());
                             }
                             let _ = fs::write(path, entry.data);
                         }
