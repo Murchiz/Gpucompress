@@ -162,11 +162,11 @@ fn main() -> Result<(), slint::PlatformError> {
                         let mut created_dirs = HashSet::with_capacity(entries.len() / 4);
                         for entry in entries {
                             let path = dest_dir.join(entry.name);
-                            if let Some(parent) = path.parent() {
-                                if !created_dirs.contains(parent) {
-                                    let _ = fs::create_dir_all(parent);
-                                    created_dirs.insert(parent.to_path_buf());
-                                }
+                            if let Some(parent) = path.parent()
+                                && !created_dirs.contains(parent)
+                            {
+                                let _ = fs::create_dir_all(parent);
+                                created_dirs.insert(parent.to_path_buf());
                             }
                             let _ = fs::write(path, entry.data);
                         }
