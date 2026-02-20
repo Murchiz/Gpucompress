@@ -83,7 +83,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let format_str = format.to_string();
 
         let dest = FileDialog::new()
-            .set_file_name(&format!(
+            .set_file_name(format!(
                 "archive.{}",
                 format_str.to_lowercase().trim_start_matches('.')
             ))
@@ -133,8 +133,8 @@ fn main() -> Result<(), slint::PlatformError> {
     let accel_clone = accelerator.clone();
     ui.on_extract_clicked(move || {
         let ui = ui_handle.unwrap();
-        if let Some(archive_path) = FileDialog::new().pick_file() {
-            if let Some(dest_dir) = FileDialog::new().pick_folder() {
+        if let Some(archive_path) = FileDialog::new().pick_file()
+            && let Some(dest_dir) = FileDialog::new().pick_folder() {
                 ui.set_status_text("Decompressing...".into());
 
                 let ext = archive_path
@@ -165,7 +165,6 @@ fn main() -> Result<(), slint::PlatformError> {
                     Err(e) => ui.set_status_text(format!("Error reading archive: {}", e).into()),
                 }
             }
-        }
     });
 
     let ui_handle = ui.as_weak();
@@ -173,8 +172,8 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_test_clicked(move || {
         let ui = ui_handle.unwrap();
         let index = ui.get_selected_index();
-        if index >= 0 && (index as usize) < files_model_clone.row_count() {
-            if let Some(file) = files_model_clone.row_data(index as usize) {
+        if index >= 0 && (index as usize) < files_model_clone.row_count()
+            && let Some(file) = files_model_clone.row_data(index as usize) {
                 let path = PathBuf::from(file.path.as_str());
                 ui.set_status_text(format!("Testing {}...", file.name).into());
                 if let Ok(data) = fs::read(&path) {
@@ -187,7 +186,6 @@ fn main() -> Result<(), slint::PlatformError> {
                     }
                 }
             }
-        }
     });
 
     let ui_handle = ui.as_weak();
@@ -195,8 +193,8 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_info_clicked(move || {
         let ui = ui_handle.unwrap();
         let index = ui.get_selected_index();
-        if index >= 0 && (index as usize) < files_model_clone.row_count() {
-            if let Some(file) = files_model_clone.row_data(index as usize) {
+        if index >= 0 && (index as usize) < files_model_clone.row_count()
+            && let Some(file) = files_model_clone.row_data(index as usize) {
                 ui.set_status_text(
                     format!(
                         "File: {} | Size: {} | Path: {}",
@@ -205,7 +203,6 @@ fn main() -> Result<(), slint::PlatformError> {
                     .into(),
                 );
             }
-        }
     });
 
     ui.run()
