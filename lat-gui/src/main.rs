@@ -12,7 +12,6 @@ use rfd::FileDialog;
 use slint::{Color, Model, ModelRc, SharedString, VecModel};
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -99,8 +98,9 @@ fn main() -> Result<(), slint::PlatformError> {
             let mut entries = Vec::with_capacity(count);
             for i in 0..count {
                 if let Some(file) = files_model_clone.row_data(i) {
-                    let path = PathBuf::from(file.path.as_str());
-                    if let Ok(data) = fs::read(&path) {
+                    // Bolt ⚡ Optimization: Read directly using SharedString's slice to avoid
+                    // an unnecessary PathBuf (and thus String) heap allocation per file.
+                    if let Ok(data) = fs::read(file.path.as_str()) {
                         entries.push(ArchiveEntry {
                             name: file.name.to_string(),
                             data,
@@ -188,9 +188,10 @@ fn main() -> Result<(), slint::PlatformError> {
             && (index as usize) < files_model_clone.row_count()
             && let Some(file) = files_model_clone.row_data(index as usize)
         {
-            let path = PathBuf::from(file.path.as_str());
             ui.set_status_text(format!("Testing {}...", file.name).into());
-            if let Ok(data) = fs::read(&path) {
+            // Bolt ⚡ Optimization: Read directly using SharedString's slice to avoid
+            // an unnecessary PathBuf (and thus String) heap allocation.
+            if let Ok(data) = fs::read(file.path.as_str()) {
                 if ZipCompressor.decompress(&data, None).is_ok() {
                     ui.set_status_text("Archive integrity verified (ZIP)".into());
                 } else if SevenZCompressor.decompress(&data, None).is_ok() {
