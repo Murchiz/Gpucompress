@@ -53,3 +53,7 @@
 ## 2025-06-05 - [Syscall Caching and UI-to-Backend Pre-allocation]
 **Learning:** Redundant filesystem syscalls like `fs::create_dir_all` can become a significant bottleneck when processing large archives with many files in the same subdirectories. Caching created directories in a `HashSet` provides a cheap way to skip these calls. Furthermore, always bridge the UI-to-backend gap efficiently by pre-allocating collection vectors (e.g., `Vec::with_capacity`) when the size is known from the UI model.
 **Action:** Use a `HashSet` to cache and skip redundant filesystem operations in loops. Always pre-allocate vectors when bridging data from UI models to processing backends.
+
+## 2025-06-06 - [Avoid Redundant PathBuf Allocations]
+**Learning:** In Rust, many I/O functions like `fs::read` accept any type that implements `AsRef<Path>`. Using `PathBuf::from(s.as_str())` when `s` is a `SharedString` (or any string-like type) introduces a redundant heap allocation.
+**Action:** Pass string slices directly to functions that accept `AsRef<Path>` to avoid unnecessary allocations, especially inside loops.
