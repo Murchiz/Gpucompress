@@ -57,3 +57,7 @@
 ## 2025-06-06 - [Avoid Redundant PathBuf Allocations]
 **Learning:** In Rust, many I/O functions like `fs::read` accept any type that implements `AsRef<Path>`. Using `PathBuf::from(s.as_str())` when `s` is a `SharedString` (or any string-like type) introduces a redundant heap allocation.
 **Action:** Pass string slices directly to functions that accept `AsRef<Path>` to avoid unnecessary allocations, especially inside loops.
+
+## 2025-06-07 - [SharedString UTF-8 Fast Path]
+**Learning:** Converting `PathBuf` components to Slint's `SharedString` via `to_string_lossy().to_string().into()` is inefficient. It results in multiple intermediate `String` allocations and copies even for common UTF-8 paths. Using `path.to_str()` as a fast path allows direct conversion from a `&str` reference, bypassing intermediate allocations.
+**Action:** Always attempt a UTF-8 fast path (`to_str()`) before falling back to lossy conversion when bridging filesystem paths to UI models.
