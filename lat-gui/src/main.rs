@@ -37,23 +37,39 @@ fn main() -> Result<(), slint::PlatformError> {
         if let Some(paths) = FileDialog::new().pick_files() {
             for path in paths {
                 if let Ok(metadata) = fs::metadata(&path) {
+                    // Bolt ⚡ Optimization: Use a UTF-8 fast path for string conversions to avoid
+                    // redundant String allocations and heap copies when adding files.
                     let name = path
                         .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
-                    let size = if metadata.is_dir() {
-                        "DIR".to_string()
+                        .and_then(|n| n.to_str())
+                        .map(SharedString::from)
+                        .unwrap_or_else(|| {
+                            SharedString::from(
+                                path.file_name()
+                                    .unwrap_or_default()
+                                    .to_string_lossy()
+                                    .as_ref(),
+                            )
+                        });
+
+                    let size: SharedString = if metadata.is_dir() {
+                        "DIR".into()
                     } else {
-                        format_size(metadata.len())
+                        format_size(metadata.len()).into()
                     };
-                    let date = format_date(metadata.modified().ok());
+
+                    let date: SharedString = format_date(metadata.modified().ok()).into();
+
+                    let path_ss = path
+                        .to_str()
+                        .map(SharedString::from)
+                        .unwrap_or_else(|| SharedString::from(path.to_string_lossy().as_ref()));
 
                     files_model_clone.push(FileEntry {
-                        name: name.into(),
-                        size: size.into(),
-                        date: date.into(),
-                        path: path.to_string_lossy().to_string().into(),
+                        name,
+                        size,
+                        date,
+                        path: path_ss,
                     });
                 }
             }
