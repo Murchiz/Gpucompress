@@ -181,14 +181,14 @@ fn main() -> Result<(), slint::PlatformError> {
 
                         for entry in entries {
                             let path = dest_dir.join(entry.name);
-                            if let Some(parent) = path.parent() {
-                                if last_parent.as_deref() != Some(parent) {
-                                    if !created_dirs.contains(parent) {
-                                        let _ = fs::create_dir_all(parent);
-                                        created_dirs.insert(parent.to_path_buf());
-                                    }
-                                    last_parent = Some(parent.to_path_buf());
+                            if let Some(parent) = path.parent()
+                                && last_parent.as_deref() != Some(parent)
+                            {
+                                if !created_dirs.contains(parent) {
+                                    let _ = fs::create_dir_all(parent);
+                                    created_dirs.insert(parent.to_path_buf());
                                 }
+                                last_parent = Some(parent.to_path_buf());
                             }
                             let _ = fs::write(path, entry.data);
                         }
