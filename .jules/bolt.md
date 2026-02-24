@@ -61,3 +61,7 @@
 ## 2025-06-07 - [SharedString UTF-8 Fast Path]
 **Learning:** Converting `PathBuf` components to Slint's `SharedString` via `to_string_lossy().to_string().into()` is inefficient. It results in multiple intermediate `String` allocations and copies even for common UTF-8 paths. Using `path.to_str()` as a fast path allows direct conversion from a `&str` reference, bypassing intermediate allocations.
 **Action:** Always attempt a UTF-8 fast path (`to_str()`) before falling back to lossy conversion when bridging filesystem paths to UI models.
+
+## 2025-06-08 - [Optimized Directory Creation via Caching]
+**Learning:** In loops involving frequent filesystem directory creation (like archive extraction), redundant syscalls and HashSet lookups can be significantly reduced by pre-seeding the directory cache with the destination root and using a simple 'last parent' cache for consecutive files.
+**Action:** Always pre-seed directory caches with the root. For sorted data, use a single-element 'last seen' cache to bypass heavier collection lookups.
