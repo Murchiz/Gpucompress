@@ -12,6 +12,7 @@ use rfd::FileDialog;
 use slint::{Color, Model, ModelRc, SharedString, VecModel};
 use std::collections::HashSet;
 use std::fs;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -171,17 +172,23 @@ fn main() -> Result<(), slint::PlatformError> {
             match fs::read(&archive_path) {
                 Ok(archive_data) => match compressor.decompress(&archive_data, None) {
                     Ok(entries) => {
-                        // Bolt ⚡ Optimization: Use a HashSet to cache created directories.
-                        // This avoids redundant and expensive create_dir_all syscalls when
-                        // extracting many files into the same subdirectory.
+                        // Bolt ⚡ Optimization: Pre-seed created_dirs with the destination
+                        // root and use a last_parent cache to skip redundant HashSet lookups
+                        // and syscalls for consecutive files in the same directory.
                         let mut created_dirs = HashSet::with_capacity(entries.len() / 4);
+                        created_dirs.insert(dest_dir.to_path_buf());
+                        let mut last_parent: Option<PathBuf> = None;
+
                         for entry in entries {
                             let path = dest_dir.join(entry.name);
-                            if let Some(parent) = path.parent()
-                                && !created_dirs.contains(parent)
-                            {
-                                let _ = fs::create_dir_all(parent);
-                                created_dirs.insert(parent.to_path_buf());
+                            if let Some(parent) = path.parent() {
+                                if last_parent.as_deref() != Some(parent) {
+                                    if !created_dirs.contains(parent) {
+                                        let _ = fs::create_dir_all(parent);
+                                        created_dirs.insert(parent.to_path_buf());
+                                    }
+                                    last_parent = Some(parent.to_path_buf());
+                                }
                             }
                             let _ = fs::write(path, entry.data);
                         }
