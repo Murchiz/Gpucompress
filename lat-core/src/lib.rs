@@ -51,24 +51,26 @@ pub mod crypto {
     pub fn encrypt(data: &[u8], password: &str) -> Result<Vec<u8>, String> {
         let mut rng = rand::thread_rng();
 
-        // Bolt ⚡ Optimization: Pre-allocate result buffer and fill it directly with random
-        // salt and nonce. This avoids a temporary stack array and an extra memcpy.
-        let mut result = Vec::with_capacity(44 + data.len());
-        result.resize(28, 0);
-        rng.fill(&mut result[..28]);
+        // Bolt ⚡ Optimization: Generate salt and nonce on the stack in one go.
+        // This avoids zero-initializing the heap-allocated result buffer before filling it,
+        // and also simplifies key derivation by using the stack-allocated salt directly.
+        let salt_nonce: [u8; 28] = rng.r#gen();
+        let salt = &salt_nonce[..16];
+        let nonce = &salt_nonce[16..28];
 
-        // Bolt ⚡ Optimization: Use pbkdf2_hmac_array for more efficient key derivation.
-        // This avoids manual buffer initialization and slicing.
-        let key = pbkdf2_hmac_array::<Sha256, 32>(password.as_bytes(), &result[..16], 100_000);
+        let key = pbkdf2_hmac_array::<Sha256, 32>(password.as_bytes(), salt, 100_000);
         let cipher = Aes256Gcm::new(&key.into());
 
-        // Append plaintext data. Pre-allocated capacity ensures no reallocation.
+        // Bolt ⚡ Optimization: Pre-allocate result buffer and extend it with salt_nonce and data.
+        // This is more efficient than resize() + rng.fill() as it avoids redundant zeroing.
+        let mut result = Vec::with_capacity(44 + data.len());
+        result.extend_from_slice(&salt_nonce);
         result.extend_from_slice(data);
 
         // Encrypt the data part in-place (starts at index 28).
-        // Use split_at_mut to satisfy the borrow checker when passing both nonce and data.
-        let (header, ciphertext) = result.split_at_mut(28);
-        let nonce = &header[16..28];
+        // We use split_at_mut here to get a mutable reference to the ciphertext part of the
+        // buffer while the rest of the buffer remains owned by the Vec.
+        let (_, ciphertext) = result.split_at_mut(28);
         let tag = cipher
             .encrypt_in_place_detached(Nonce::from_slice(nonce), b"", ciphertext)
             .map_err(|e| e.to_string())?;
@@ -85,10 +87,11 @@ pub mod crypto {
             return Err("Invalid encrypted data: too short".to_string());
         }
 
-        // Bolt ⚡ Optimization: Consolidate slicing to reduce metadata updates.
-        // Use split_at to partition the header into salt and nonce in one go.
-        let (header, ciphertext_and_tag) = data.split_at(28);
-        let (salt, nonce) = header.split_at(16);
+        // Bolt ⚡ Optimization: Direct slicing of salt, nonce, and ciphertext from the input data.
+        // This avoids intermediate header slicing and keeps metadata updates to a minimum.
+        let salt = &data[..16];
+        let nonce = &data[16..28];
+        let ciphertext_and_tag = &data[28..];
 
         // Bolt ⚡ Optimization: Dual fail-fast check for zeroed salt or nonce with an
         // initial byte check to quickly skip non-zeroed slices (99.6% of random data).
