@@ -65,3 +65,7 @@
 ## 2025-06-08 - [Optimized Directory Creation via Caching]
 **Learning:** In loops involving frequent filesystem directory creation (like archive extraction), redundant syscalls and HashSet lookups can be significantly reduced by pre-seeding the directory cache with the destination root and using a simple 'last parent' cache for consecutive files.
 **Action:** Always pre-seed directory caches with the root. For sorted data, use a single-element 'last seen' cache to bypass heavier collection lookups.
+
+## 2025-06-09 - [Heap Zero-Initialization Avoidance]
+**Learning:** Using `Vec::resize(N, 0)` followed by a write (like `rng.fill`) results in two sets of writes to the heap: first zeros, then the actual data. In performance-critical code, generating data on the stack (e.g., `rng.r#gen::<[u8; N]>()`) and using `Vec::extend_from_slice` avoids the zero-initialization overhead entirely.
+**Action:** Use stack-allocated arrays and `extend_from_slice` to populate `Vec` headers to avoid redundant heap writes.
