@@ -69,3 +69,7 @@
 ## 2025-06-09 - [Heap Zero-Initialization Avoidance]
 **Learning:** Using `Vec::resize(N, 0)` followed by a write (like `rng.fill`) results in two sets of writes to the heap: first zeros, then the actual data. In performance-critical code, generating data on the stack (e.g., `rng.r#gen::<[u8; N]>()`) and using `Vec::extend_from_slice` avoids the zero-initialization overhead entirely.
 **Action:** Use stack-allocated arrays and `extend_from_slice` to populate `Vec` headers to avoid redundant heap writes.
+
+## 2026-02-26 - [Static String Optimization in Slint]
+**Learning:** Slint's `SharedString` can efficiently handle static string literals (`&'static str`) without heap allocation or copying. Converting a `String` to `SharedString` usually involves a copy due to memory layout differences, but returning `SharedString` directly from utility functions allows leveraging static strings for common cases like "Unknown" or "DIR".
+**Action:** Always prefer returning `SharedString` directly from UI-facing utility functions. Use static string literals for default/error cases to eliminate redundant heap allocations in hot paths like file-adding loops.
