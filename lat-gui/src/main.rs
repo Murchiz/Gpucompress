@@ -38,18 +38,17 @@ fn main() -> Result<(), slint::PlatformError> {
         if let Some(paths) = FileDialog::new().pick_files() {
             for path in paths {
                 if let Ok(metadata) = fs::metadata(&path) {
-                    // Bolt ⚡ Optimization: Avoid redundant string allocations by using UTF-8 fast path
-                    // and direct conversion to SharedString. This saves up to 2 heap allocations
-                    // and 2 copies per file added.
-                    let name_ss = if let Some(s) = path.file_name().and_then(|n| n.to_str()) {
-                        SharedString::from(s)
+                    // Bolt ⚡ Optimization: Minimize path component lookups by nesting the
+                    // file name extraction. Using direct SharedString conversion from &str
+                    // avoids intermediate String allocations for the UTF-8 fast path.
+                    let name_ss = if let Some(file_name) = path.file_name() {
+                        if let Some(s) = file_name.to_str() {
+                            SharedString::from(s)
+                        } else {
+                            SharedString::from(file_name.to_string_lossy().as_ref())
+                        }
                     } else {
-                        SharedString::from(
-                            path.file_name()
-                                .unwrap_or_default()
-                                .to_string_lossy()
-                                .as_ref(),
-                        )
+                        SharedString::from("")
                     };
 
                     let path_ss = if let Some(s) = path.to_str() {
@@ -61,14 +60,14 @@ fn main() -> Result<(), slint::PlatformError> {
                     let size = if metadata.is_dir() {
                         SharedString::from("DIR")
                     } else {
-                        format_size(metadata.len()).into()
+                        format_size(metadata.len())
                     };
                     let date = format_date(metadata.modified().ok());
 
                     files_model_clone.push(FileEntry {
                         name: name_ss,
                         size,
-                        date: date.into(),
+                        date,
                         path: path_ss,
                     });
                 }
@@ -247,29 +246,34 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.run()
 }
 
-fn format_size(size: u64) -> String {
+fn format_size(size: u64) -> SharedString {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
 
+    // Bolt ⚡ Optimization: Return SharedString directly. While format! still
+    // allocates a String, this approach is more idiomatic for Slint and
+    // simplifies the call sites by avoiding redundant .into() conversions.
     if size >= GB {
-        format!("{:.1} GB", size as f64 / GB as f64)
+        SharedString::from(format!("{:.1} GB", size as f64 / GB as f64))
     } else if size >= MB {
-        format!("{:.1} MB", size as f64 / MB as f64)
+        SharedString::from(format!("{:.1} MB", size as f64 / MB as f64))
     } else if size >= KB {
-        format!("{:.1} KB", size as f64 / KB as f64)
+        SharedString::from(format!("{:.1} KB", size as f64 / KB as f64))
     } else {
-        format!("{} B", size)
+        SharedString::from(format!("{} B", size))
     }
 }
 
-fn format_date(modified: Option<std::time::SystemTime>) -> String {
+fn format_date(modified: Option<std::time::SystemTime>) -> SharedString {
     match modified {
         Some(time) => {
             let datetime: DateTime<Local> = time.into();
-            datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+            SharedString::from(datetime.format("%Y-%m-%d %H:%M:%S").to_string())
         }
-        None => "Unknown".to_string(),
+        // Bolt ⚡ Optimization: Return a static SharedString directly for the
+        // common "Unknown" case, avoiding a heap-allocated String.
+        None => SharedString::from("Unknown"),
     }
 }
 
