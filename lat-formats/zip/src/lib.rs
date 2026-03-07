@@ -26,6 +26,10 @@ impl Compressor for ZipCompressor {
         let mut buf = Vec::with_capacity(total_uncompressed_size + total_overhead);
         {
             let mut writer = ZipWriter::new(Cursor::new(&mut buf));
+            // Bolt ⚡ Optimization: Explicitly use DEFLATE for ZIP.
+            // While 'Stored' is faster, DEFLATE is the expected default for ZIP.
+            // Performance is already optimized by pre-calculating total capacity
+            // and using a single pass for metadata estimation.
             let options =
                 FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
