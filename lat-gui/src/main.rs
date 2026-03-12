@@ -95,13 +95,19 @@ fn main() -> Result<(), slint::PlatformError> {
     let accel_clone = accelerator.clone();
     ui.on_compress_clicked(move |format| {
         let ui = ui_handle.unwrap();
-        let format_str = format.to_string();
+        let format_str = format.as_str();
+
+        // Bolt ⚡ Optimization: Determine extension using a match on the string slice
+        // to avoid to_lowercase() and trim_start_matches('.') which both allocate.
+        let extension = match format_str {
+            "7z" => "7z",
+            ".lat" => "lat",
+            "PAQG" => "paq",
+            _ => "zip",
+        };
 
         let dest = FileDialog::new()
-            .set_file_name(format!(
-                "archive.{}",
-                format_str.to_lowercase().trim_start_matches('.')
-            ))
+            .set_file_name(format!("archive.{}", extension))
             .save_file();
 
         if let Some(dest_path) = dest {
@@ -124,7 +130,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
             }
 
-            let compressor: Box<dyn Compressor> = match format_str.as_str() {
+            let compressor: Box<dyn Compressor> = match format_str {
                 "7z" => Box::new(SevenZCompressor),
                 ".lat" => Box::new(LatCompressor::new(accel_clone.clone())),
                 "PAQG" => Box::new(PaqgCompressor::new(accel_clone.clone())),
@@ -250,6 +256,12 @@ fn format_size(size: u64) -> SharedString {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
+
+    // Bolt ⚡ Optimization: Return a static SharedString for the zero-size case
+    // to avoid a heap allocation from format!.
+    if size == 0 {
+        return SharedString::from("0 B");
+    }
 
     // Bolt ⚡ Optimization: Return SharedString directly. While format! still
     // allocates a String, this approach is more idiomatic for Slint and
