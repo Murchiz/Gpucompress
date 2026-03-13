@@ -95,17 +95,23 @@ fn main() -> Result<(), slint::PlatformError> {
     let accel_clone = accelerator.clone();
     ui.on_compress_clicked(move |format| {
         let ui = ui_handle.unwrap();
-        let format_str = format.to_string();
+
+        // Bolt ⚡ Optimization: Determine the file extension and compressor via a
+        // zero-allocation match on the format string slice. This avoids redundant
+        // to_lowercase() and trim_start_matches allocations per click.
+        let (ext, compressor): (&str, Box<dyn Compressor>) = match format.as_str() {
+            "7z" => ("7z", Box::new(SevenZCompressor)),
+            ".lat" => ("lat", Box::new(LatCompressor::new(accel_clone.clone()))),
+            "PAQG" => ("paq", Box::new(PaqgCompressor::new(accel_clone.clone()))),
+            _ => ("zip", Box::new(ZipCompressor)),
+        };
 
         let dest = FileDialog::new()
-            .set_file_name(format!(
-                "archive.{}",
-                format_str.to_lowercase().trim_start_matches('.')
-            ))
+            .set_file_name(format!("archive.{}", ext))
             .save_file();
 
         if let Some(dest_path) = dest {
-            ui.set_status_text(format!("Compressing to {}...", format_str).into());
+            ui.set_status_text(format!("Compressing to {}...", format).into());
 
             // Bolt ⚡ Optimization: Pre-allocate the entries vector with the known number of files.
             // This avoids multiple expensive reallocations and memcpys during the collection phase.
@@ -124,21 +130,12 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
             }
 
-            let compressor: Box<dyn Compressor> = match format_str.as_str() {
-                "7z" => Box::new(SevenZCompressor),
-                ".lat" => Box::new(LatCompressor::new(accel_clone.clone())),
-                "PAQG" => Box::new(PaqgCompressor::new(accel_clone.clone())),
-                _ => Box::new(ZipCompressor),
-            };
-
             match compressor.compress(&entries, None) {
                 Ok(data) => {
                     if let Err(e) = fs::write(dest_path, data) {
                         ui.set_status_text(format!("Error: {}", e).into());
                     } else {
-                        ui.set_status_text(
-                            format!("Successfully compressed to {}", format_str).into(),
-                        );
+                        ui.set_status_text(format!("Successfully compressed to {}", format).into());
                     }
                 }
                 Err(e) => {
@@ -250,6 +247,12 @@ fn format_size(size: u64) -> SharedString {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
+
+    // Bolt ⚡ Optimization: Return a static SharedString directly for zero-sized
+    // files. This avoids format! and heap allocation for the most common "empty" case.
+    if size == 0 {
+        return SharedString::from("0 B");
+    }
 
     // Bolt ⚡ Optimization: Return SharedString directly. While format! still
     // allocates a String, this approach is more idiomatic for Slint and

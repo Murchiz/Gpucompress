@@ -73,3 +73,7 @@
 ## 2026-02-26 - [Static String Optimization in Slint]
 **Learning:** Slint's `SharedString` can efficiently handle static string literals (`&'static str`) without heap allocation or copying. Converting a `String` to `SharedString` usually involves a copy due to memory layout differences, but returning `SharedString` directly from utility functions allows leveraging static strings for common cases like "Unknown" or "DIR".
 **Action:** Always prefer returning `SharedString` directly from UI-facing utility functions. Use static string literals for default/error cases to eliminate redundant heap allocations in hot paths like file-adding loops.
+
+## 2026-02-27 - [Zero-Allocation String Matching and UI Literal Optimization]
+**Learning:** Branching on string values in UI handlers often leads to redundant `String` allocations (e.g., `to_lowercase()`, `trim()`, `to_string()`) when building file extensions or selecting components. Unifying these branches into a single `match` on the existing string slice eliminates these intermediate allocations. Additionally, extending static `SharedString` optimizations to common numerical edge cases (like `size == 0`) further reduces heap churn.
+**Action:** Unify string-based selection logic into a single `match` on slices to avoid intermediate `String` allocations. Always provide static `SharedString` fast paths for common UI values like "0 B".
